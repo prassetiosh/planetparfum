@@ -1,0 +1,18 @@
+V91.StokOrd - Versi Instal (Desktop & Mobile)
+
+ISI PAKET
+index.html, manifest.webmanifest, sw.js, icon-192.png, icon-512.png
+
+CARA INSTAL (PWA)
+Aplikasi harus dibuka lewat alamat https:// agar bisa diinstal.
+1. Unggah SELURUH isi folder ini ke hosting statis gratis, misalnya Netlify Drop, Cloudflare Pages, atau GitHub Pages.
+2. Buka alamatnya di browser.
+   - Desktop (Chrome/Edge): klik ikon instal di kolom alamat, atau tombol "Instal Aplikasi" di pojok kanan bawah.
+   - Android (Chrome): menu titik tiga > Instal aplikasi / Tambahkan ke layar utama.
+   - iPhone/iPad (Safari): tombol Bagikan > Tambah ke Layar Utama.
+3. Setelah terpasang, aplikasi bisa dibuka dari ikon dan tetap jalan tanpa internet.
+
+CATATAN
+- Data tersimpan di browser perangkat masing-masing.
+- Sinkron Google Sheet/Drive hanya jalan di versi artifact claude.ai. Di versi instal, pindahkan data antar perangkat lewat menu Ekspor/Impor Excel.
+- Ekspor Excel dan cetak PDF di versi instal langsung mengunduh file.
