@@ -1,7 +1,7 @@
 V91.StokOrd - Versi Instal (Desktop & Mobile)
 
 ISI PAKET
-index.html, manifest.webmanifest, sw.js, icon-192.png, icon-512.png
+index.html, manifest.webmanifest, sw.js, icon-192.png, icon-512.png, apps-script-v91.gs
 
 CARA INSTAL (PWA)
 Aplikasi harus dibuka lewat alamat https:// agar bisa diinstal.
@@ -16,3 +16,20 @@ CATATAN
 - Data tersimpan di browser perangkat masing-masing.
 - Sinkron Google Sheet/Drive hanya jalan di versi artifact claude.ai. Di versi instal, pindahkan data antar perangkat lewat menu Ekspor/Impor Excel.
 - Ekspor Excel dan cetak PDF di versi instal langsung mengunduh file.
+
+SINKRON GOOGLE SHEET DI VERSI INSTAL (Jembatan Apps Script)
+1. Buka Google Sheet "V91.StokOrd Data" > Ekstensi > Apps Script.
+2. Di aplikasi: menu Sinkronisasi > Salin Skrip (kunci rahasia otomatis tertulis). Tempel di editor, Simpan.
+   (Atau pakai file apps-script-v91.gs dan ganti GANTI-KUNCI dengan kunci Anda.)
+3. Terapkan > Penerapan baru > Aplikasi web > Jalankan sebagai: Saya, Akses: Siapa saja.
+4. Izinkan akses, salin URL Web App (berakhiran /exec), tempel di menu Sinkronisasi, klik Simpan & Uji.
+5. Klik Sinkron Sekarang sekali. Setelah itu sinkron otomatis aktif saat online.
+Siapa pun yang tahu URL dan kunci bisa menulis ke sheet. Jangan bagikan keduanya.
+
+MEMPERBARUI APLIKASI YANG SUDAH DI GITHUB
+Unggah ulang SEMUA file (terutama index.html dan sw.js), lalu tutup dan buka lagi aplikasinya.
+
+SIMPAN LANGSUNG KE FOLDER PC (Chrome/Edge di PC)
+Menu Sinkronisasi > Pilih Folder PC, lalu tunjuk folder, misalnya folder V91.StokOrd di Google Drive for desktop (G:\My Drive\V91.StokOrd).
+Data tertulis otomatis ke V91StokOrd-data.json (plus cadangan harian). Setiap membuka aplikasi, klik Izinkan Akses sekali.
+Pulihkan data lewat tombol Pulihkan dari Folder.

@@ -44,7 +44,7 @@ const NOTES={'baccarat rouge':'Top: Saffron, Jasmine | Heart: Amberwood, Ambergr
 const key=m=>F[m].f[0][0];
 function seed(){return{bibit:[{kode:'BB001',brand:'Maison X',nama:'Rouge 540',inspired:'Baccarat Rouge 540',kategori:'Standar',gender:'Unisex',notes:NOTES['baccarat rouge'],stok:500,min:100,harga:2500,lokasi:'Rak A1',upd:now(),ket:''}],kemasan:[{kode:'KM001',nama:'Botol Spray',model:'Slim',ukuran:'30 ml',warna:'Bening',stok:200,min:50,harga:3500,lokasi:'Rak B1',upd:now(),ket:''}],mitra:[{kode:'MT001',nama:'Toko Wangi',status:'Pelanggan',kategori:'Retail',alamat:'',telp:'',pic:'',ket:''}],users:[{id:'admin',nama:'Administrator',akses:'Admin',hp:'',pw:'admin123'}],log:[]}}
 let DB;try{DB=JSON.parse(localStorage.getItem('v91'))}catch(e){}DB=DB||seed();DB.opts=DB.opts||{kategori:['Standar','Premium','Gold']};
-const save=()=>{try{localStorage.setItem('v91',JSON.stringify(DB))}catch(e){};syncSoon()};
+const save=()=>{try{localStorage.setItem('v91',JSON.stringify(DB))}catch(e){};syncSoon();fsSoon()};
 let U=null,PG='home',S={},T={tipe:'masuk',items:[],mitra:'',cat:''},LF={},RF={};
 const val=(m,r,k)=>k=='total'?r.stok*r.harga:r[k];
 const fmt=(f,v)=>f[2]=='m'||f[2]=='c'?rp(v):v;
@@ -154,34 +154,117 @@ pop(`Impor <b>${r.recs.length}</b> data ke <b>${XN[m]}</b>.<br>Metode: <b>${mode
 // sinkronisasi google sheets
 const SH={id:'12XDpFeyekAlEUQaqGhrR_RvpgU5xFafi3_fyRofco1s',fold:'https://drive.google.com/drive/folders/17yl2sRwYDfdSVbzUVPaKL-WZUh_URR0t',url:'https://docs.google.com/spreadsheets/d/12XDpFeyekAlEUQaqGhrR_RvpgU5xFafi3_fyRofco1s/edit'};
 const TABS={Bibit:'bibit',Kemasan:'kemasan',Mitra:'mitra',Transaksi:'trx',Users:'users'},SID={Bibit:1828722606,Kemasan:1603696470,Mitra:1888840113,Transaksi:1128591481,Users:517676397};
-let SY={on:true,armed:false,last:'',st:'idle',err:'',busy:false,dirty:false,t:0,cap:{Bibit:1000,Kemasan:1000,Mitra:1000,Transaksi:1000,Users:1000}};
-try{const z=JSON.parse(localStorage.getItem('v91sy')||'{}');SY.on=z.on!==false;SY.armed=!!z.armed;SY.last=z.last||''}catch(e){}
-const saveSY=()=>{try{localStorage.setItem('v91sy',JSON.stringify({on:SY.on,armed:SY.armed,last:SY.last}))}catch(e){}};
-function setSB(){const e=$('#sb');if(!e)return;e.textContent={idle:SY.last?'☁ Tersinkron '+SY.last:'☁ Belum sinkron',busy:'☁ Menyinkronkan…',off:'☁ Offline, antre',err:'☁ Gagal sinkron'}[SY.st]}
+let SY={on:true,armed:false,last:'',url:'',key:'',st:'idle',err:'',busy:false,dirty:false,t:0,cap:{Bibit:1000,Kemasan:1000,Mitra:1000,Transaksi:1000,Users:1000}};
+try{const z=JSON.parse(localStorage.getItem('v91sy')||'{}');SY.on=z.on!==false;SY.armed=!!z.armed;SY.last=z.last||'';SY.url=z.url||'';SY.key=z.key||''}catch(e){}
+const saveSY=()=>{try{localStorage.setItem('v91sy',JSON.stringify({on:SY.on,armed:SY.armed,last:SY.last,url:SY.url,key:SY.key}))}catch(e){}};
+function setSB(){const e=$('#sb');if(!e)return;e.textContent={idle:SY.last?'☁ Tersinkron '+SY.last:'☁ Belum sinkron',busy:'☁ Menyinkronkan…',off:'☁ Offline, antre',err:'☁ Gagal sinkron'}[SY.st]+(FS.h?' · 💾 '+({ok:'Folder PC OK',perm:'Folder PC: perlu izin',err:'Folder PC gagal'}[FS.st]||'Folder PC'):'')}
 async function getM(){try{return window.claude?await claude.use('mcp'):null}catch(e){return null}}
 function gerr(e){const c=e&&e.code;return c=='needs_reauth'||c=='server_not_connected'?'Google Sheets belum terhubung atau perlu dihubungkan ulang di Pengaturan › Konektor claude.ai.':c=='not_in_manifest'||c=='consent_required'?'Izin akses Google Sheets belum diberikan untuk aplikasi ini.':c=='unavailable'?e.message:'Gagal terhubung ke Google Sheets ('+((e&&(e.code||e.message))||e)+').'}
 async function gs(tool,input){const M=await getM();if(!M)throw{code:'unavailable',message:'Sinkronisasi hanya tersedia saat aplikasi dibuka lewat tautan artifact di claude.ai. Versi instal berjalan lokal/offline.'};return (await M.callTool('Google Sheets',tool,{spreadsheetId:SH.id,...input})).payload}
 const grid=m=>{const rows=eRows(m);let h=m=='trx'?TXH:F[m].f.map(f=>f[1]);if(m=='users')h=h.filter(k=>k!='Password');return[h,...rows.map(r=>h.map(k=>r[k]??''))]};
-async function push(manual){if(SY.busy){SY.dirty=true;return}if(!navigator.onLine){SY.st='off';SY.dirty=true;setSB();return}SY.busy=true;SY.dirty=false;SY.st='busy';setSB();
-try{const G={};for(const[t,m]of Object.entries(TABS)){G[t]=grid(m);if(G[t].length>SY.cap[t]-5){const n=G[t].length+500-SY.cap[t];await gs('update_spreadsheet',{requests:[{appendDimension:{sheetId:SID[t],dimension:'ROWS',length:n}}]});SY.cap[t]+=n}}
-await gs('batch_clear_values',{ranges:Object.keys(TABS).map(t=>t+'!A:Z')});for(const t of Object.keys(TABS))await gs('update_values',{range:t+'!A1',values:G[t]});
-SY.last=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});await gs('update_values',{range:'Info!A1',values:[['Aplikasi','V91.StokOrd'],['Folder Drive','My Drive / V91.StokOrd'],['Sinkron terakhir',now()],['Jumlah bibit',DB.bibit.length],['Jumlah kemasan',DB.kemasan.length],['Jumlah faktur',DB.log.length]]});
-SY.st='idle';SY.err='';SY.armed=true;saveSY();setSB();if(manual)pop('Sinkronisasi ke Google Sheet berhasil.',()=>PG=='sy'&&syPg(),0,'Berhasil')}
+const BRIDGE=`// V91.StokOrd - jembatan Google Sheet
+// Tempel di Apps Script, lalu Terapkan > Penerapan baru > Aplikasi web
+// Jalankan sebagai: Saya | Siapa yang punya akses: Siapa saja
+var KEY = 'GANTI-KUNCI';
+var SS_ID = '12XDpFeyekAlEUQaqGhrR_RvpgU5xFafi3_fyRofco1s';
+
+function doPost(e) {
+  var out;
+  try {
+    var d = JSON.parse(e.postData.contents);
+    if (d.key !== KEY) throw new Error('Kunci rahasia tidak cocok');
+    if (d.action === 'ping') {
+      out = { ok: true };
+    } else {
+      var lock = LockService.getScriptLock();
+      lock.waitLock(20000);
+      try {
+        var ss = SpreadsheetApp.openById(SS_ID);
+        if (d.action === 'push') {
+          Object.keys(d.tabs).forEach(function (name) {
+            var sh = ss.getSheetByName(name) || ss.insertSheet(name);
+            var v = d.tabs[name];
+            sh.clearContents();
+            if (v.length && v[0].length) sh.getRange(1, 1, v.length, v[0].length).setValues(v);
+          });
+          if (d.info && d.info.length) {
+            var s2 = ss.getSheetByName('Info') || ss.insertSheet('Info');
+            s2.clearContents();
+            s2.getRange(1, 1, d.info.length, d.info[0].length).setValues(d.info);
+          }
+          out = { ok: true };
+        } else if (d.action === 'pull') {
+          var tabs = {};
+          ['Bibit', 'Kemasan', 'Mitra', 'Transaksi'].forEach(function (name) {
+            var sh = ss.getSheetByName(name);
+            tabs[name] = (sh && sh.getLastRow() > 0) ? sh.getDataRange().getValues() : [];
+          });
+          out = { ok: true, tabs: tabs };
+        } else {
+          throw new Error('Aksi tidak dikenal');
+        }
+      } finally {
+        lock.releaseLock();
+      }
+    }
+  } catch (err) {
+    out = { ok: false, error: String(err.message || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet() {
+  return ContentService.createTextOutput('V91.StokOrd jembatan aktif');
+}
+`;
+async function bridge(body){let j;try{const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:SY.key,...body})});j=await r.json()}catch(e){throw{code:'unavailable',message:'Tidak bisa terhubung ke Apps Script. Periksa URL, pengaturan akses "Siapa saja", dan koneksi internet.'}}if(!j.ok)throw{code:'unavailable',message:'Apps Script: '+(j.error||'gagal')};return j}
+async function push(manual){if(SY.busy){SY.dirty=true;return}if(!navigator.onLine){SY.st='off';SY.dirty=true;setSB();return}
+if(!window.claude&&!SY.url){SY.st='err';SY.err='Alamat Apps Script belum diisi. Isi di bagian "Jembatan Apps Script" di halaman ini.';setSB();if(manual)pop(esc(SY.err),()=>PG=='sy'&&syPg(),0,'Sinkronisasi Gagal');return}
+SY.busy=true;SY.dirty=false;SY.st='busy';setSB();
+try{const G={};for(const[t,m]of Object.entries(TABS))G[t]=grid(m);const info=[['Aplikasi','V91.StokOrd'],['Folder Drive','My Drive / V91.StokOrd'],['Sinkron terakhir',now()],['Jumlah bibit',DB.bibit.length],['Jumlah kemasan',DB.kemasan.length],['Jumlah faktur',DB.log.length]];
+if(window.claude){for(const t of Object.keys(TABS))if(G[t].length>SY.cap[t]-5){const n=G[t].length+500-SY.cap[t];await gs('update_spreadsheet',{requests:[{appendDimension:{sheetId:SID[t],dimension:'ROWS',length:n}}]});SY.cap[t]+=n}
+await gs('batch_clear_values',{ranges:Object.keys(TABS).map(t=>t+'!A:Z')});for(const t of Object.keys(TABS))await gs('update_values',{range:t+'!A1',values:G[t]});await gs('update_values',{range:'Info!A1',values:info})}else await bridge({action:'push',tabs:G,info});
+SY.last=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});SY.st='idle';SY.err='';SY.armed=true;saveSY();setSB();if(manual)pop('Sinkronisasi ke Google Sheet berhasil.',()=>PG=='sy'&&syPg(),0,'Berhasil')}
 catch(e){SY.st='err';SY.err=gerr(e);setSB();if(manual)pop(esc(SY.err),()=>PG=='sy'&&syPg(),0,'Sinkronisasi Gagal')}
 finally{SY.busy=false;if(SY.dirty&&SY.armed&&SY.on&&SY.st=='idle')syncSoon()}}
 function syncSoon(){if(!SY.on||!SY.armed)return;SY.dirty=true;clearTimeout(SY.t);SY.t=setTimeout(()=>push(false),3000)}
 window.addEventListener('online',()=>{if(SY.dirty&&SY.on&&SY.armed)push(false)});window.addEventListener('offline',()=>{SY.st='off';setSB()});
-async function pull(){try{const dat={};for(const[t,m]of Object.entries(TABS)){if(m=='users')continue;const p=await gs('get_values',{range:t+'!A:Z'}),v=(p&&p.values)||[];if(!v.length)throw{code:'unavailable',message:'Tab '+t+' di Sheet masih kosong. Lakukan "Sinkron Sekarang" dulu.'};const h=v[0].map(x=>String(x).trim()),rows=v.slice(1).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]??''])));const x=rows.length?(m=='trx'?pt(rows,false):pg(m,rows)):{er:[],recs:[]};if(x.er.length)throw{code:'unavailable',message:'Tab '+t+': '+x.er.slice(0,5).join('; ')};dat[m]=x.recs}
+async function pull(){try{const dat={},BR=window.claude?null:await bridge({action:'pull'});for(const[t,m]of Object.entries(TABS)){if(m=='users')continue;const p=BR?{values:BR.tabs[t]}:await gs('get_values',{range:t+'!A:Z'}),v=(p&&p.values)||[];if(!v.length)throw{code:'unavailable',message:'Tab '+t+' di Sheet masih kosong. Lakukan "Sinkron Sekarang" dulu.'};const h=v[0].map(x=>String(x).trim()),rows=v.slice(1).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]??''])));const x=rows.length?(m=='trx'?pt(rows,false):pg(m,rows)):{er:[],recs:[]};if(x.er.length)throw{code:'unavailable',message:'Tab '+t+': '+x.er.slice(0,5).join('; ')};dat[m]=x.recs}
 dat.bibit.concat(dat.kemasan).forEach(n=>{n.upd=n.upd||now()});dat.bibit.forEach(n=>{if(n.kategori&&!DB.opts.kategori.some(o=>o.toLowerCase()==n.kategori.toLowerCase()))DB.opts.kategori.push(n.kategori)});
 DB.bibit=dat.bibit;DB.kemasan=dat.kemasan;DB.mitra=dat.mitra;DB.log=dat.trx;SY.armed=true;saveSY();save();pop('Data dari Google Sheet berhasil dimuat ke perangkat ini.',()=>PG=='sy'&&syPg(),0,'Berhasil')}
 catch(e){pop(esc(e&&e.code=='unavailable'?e.message:gerr(e)),null,0,'Tarik Data Gagal')}}
-function syPg(){const st={idle:'Tersinkron',busy:'Menyinkronkan…',off:'Offline (antre)',err:'Gagal'}[SY.st];
-$('#mn').innerHTML=`<h2>Sinkronisasi Google Sheet &amp; Drive</h2><div class="cd"><small>Status</small><div style="font-size:16px">${st}${SY.last?' · terakhir '+SY.last:''}</div>${SY.err?`<small style="color:var(--r)">${esc(SY.err)}</small>`:''}</div><div class="cd" style="margin-top:10px"><b>Lokasi penyimpanan</b><div style="margin:6px 0;line-height:1.7">☁ Google Drive › <b>V91.StokOrd</b> › <b>V91.StokOrd Data</b><br>Tab: Bibit, Kemasan, Mitra, Transaksi, Users, Info<br>💾 Cadangan lokal: browser perangkat ini</div><div class="row" style="justify-content:flex-start"><a href="${SH.fold}" target="_blank" rel="noopener"><button>Buka Folder Drive</button></a><a href="${SH.url}" target="_blank" rel="noopener"><button>Buka Google Sheet</button></a></div></div><div class="cd" style="margin-top:10px"><label style="color:var(--t)"><input type="checkbox" id="rt" style="width:auto" ${SY.on?'checked':''}> Sinkron otomatis (realtime) saat online</label><small style="color:var(--m)">Perubahan data dikirim ke Sheet beberapa detik setelah disimpan. Aktif setelah Anda menekan "Sinkron Sekarang" sekali di perangkat ini. Saat offline, perubahan diantre dan dikirim begitu online. Password user tidak dikirim ke Sheet.</small><div class="row"><button id="pll">Tarik dari Sheet</button><button class="p" id="psh">Sinkron Sekarang</button></div></div>`;
+function syPg(){if(!SY.key){SY.key=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);saveSY()}const st={idle:'Tersinkron',busy:'Menyinkronkan…',off:'Offline (antre)',err:'Gagal'}[SY.st];
+$('#mn').innerHTML=`<h2>Sinkronisasi Google Sheet &amp; Drive</h2><div class="cd"><small>Status</small><div style="font-size:16px">${st}${SY.last?' · terakhir '+SY.last:''}</div>${SY.err?`<small style="color:var(--r)">${esc(SY.err)}</small>`:''}</div><div class="cd" style="margin-top:10px"><b>Lokasi penyimpanan</b><div style="margin:6px 0;line-height:1.7">☁ Google Drive › <b>V91.StokOrd</b> › <b>V91.StokOrd Data</b><br>Tab: Bibit, Kemasan, Mitra, Transaksi, Users, Info<br>💾 Cadangan lokal: browser perangkat ini</div><div class="row" style="justify-content:flex-start"><a href="${SH.fold}" target="_blank" rel="noopener"><button>Buka Folder Drive</button></a><a href="${SH.url}" target="_blank" rel="noopener"><button>Buka Google Sheet</button></a></div></div><div class="cd" style="margin-top:10px"><label style="color:var(--t)"><input type="checkbox" id="rt" style="width:auto" ${SY.on?'checked':''}> Sinkron otomatis (realtime) saat online</label><small style="color:var(--m)">Perubahan data dikirim ke Sheet beberapa detik setelah disimpan. Aktif setelah Anda menekan "Sinkron Sekarang" sekali di perangkat ini. Saat offline, perubahan diantre dan dikirim begitu online. Password user tidak dikirim ke Sheet.</small><div class="row"><button id="pll">Tarik dari Sheet</button><button class="p" id="psh">Sinkron Sekarang</button></div></div><div class="cd" style="margin-top:10px"><b>Folder di PC (langsung ke komputer / Drive for desktop)</b><div style="margin:6px 0;line-height:1.7">${FS.h?`📁 <b>${esc(FS.h.name)}</b> · ${{ok:'tersimpan'+(FS.last?' '+FS.last:''),perm:'perlu izin akses',err:'gagal: '+esc(FS.err)}[FS.st]||'siap'}`:'Belum ada folder dipilih'}</div><small style="color:var(--m)">Pilih folder di PC, misalnya folder V91.StokOrd di Google Drive for desktop, maka data otomatis ikut ke Drive. Hanya di Chrome/Edge versi PC. Browser hanya menampilkan nama folder, bukan alamat lengkapnya. Berkas: V91StokOrd-data.json dan cadangan harian.</small><label style="color:var(--t)"><input type="checkbox" id="fa" style="width:auto" ${FS.on?'checked':''}> Simpan otomatis setiap ada perubahan</label><div class="row"><button id="fr">Pulihkan dari Folder</button><button id="fz">Izinkan Akses</button><button id="fn">Simpan Sekarang</button><button class="p" id="fp">Pilih Folder PC</button></div></div><div class="cd" style="margin-top:10px"><b>Jembatan Apps Script</b> <small style="color:var(--m)">(wajib untuk versi instal/APK; versi artifact claude.ai tidak butuh)</small><ol style="margin:6px 0;padding-left:18px;color:var(--m);font-size:12px;line-height:1.6"><li>Buka Google Sheet › Ekstensi › Apps Script, hapus isi lama.</li><li>Klik Salin Skrip di bawah, tempel, lalu Simpan.</li><li>Terapkan › Penerapan baru › Aplikasi web › Jalankan sebagai: <b>Saya</b>, Akses: <b>Siapa saja</b>.</li><li>Izinkan akses, salin URL Web App (berakhiran /exec), tempel di bawah.</li></ol><label>URL Web App</label><input id="bu" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(SY.url)}"><label>Kunci rahasia (otomatis tertulis di skrip yang disalin)</label><input id="bk2" value="${esc(SY.key)}"><div class="row"><button id="bc">Salin Skrip</button><button class="p" id="bsv">Simpan &amp; Uji</button></div></div>`;
 $('#rt').onchange=e=>{SY.on=e.target.checked;saveSY()};$('#psh').onclick=()=>pop('Kirim semua data di perangkat ini ke Google Sheet? Isi Sheet akan ditimpa.',()=>push(true),1,'Verifikasi Sinkronisasi');
-$('#pll').onclick=()=>pop('Data di perangkat ini akan DIGANTI dengan isi Google Sheet (bibit, kemasan, pelanggan/pemasok, transaksi). User admin tidak diubah. Lanjutkan?',()=>pull(),1,'Verifikasi Tarik Data')}
+$('#pll').onclick=()=>pop('Data di perangkat ini akan DIGANTI dengan isi Google Sheet (bibit, kemasan, pelanggan/pemasok, transaksi). User admin tidak diubah. Lanjutkan?',()=>pull(),1,'Verifikasi Tarik Data');
+$('#fp').onclick=fsPick;$('#fr').onclick=fsRead;$('#fa').onchange=e=>{FS.on=e.target.checked;fsSave()};$('#fz').onclick=async()=>{if(!FS.h)return pop('Pilih folder PC terlebih dahulu.',null,0,'Informasi');const ok=await fsPerm(true);if(ok){await fsWrite(true)}(PG=='sy'&&syPg())};$('#fn').onclick=async()=>{if(!FS.h)return pop('Pilih folder PC terlebih dahulu.',null,0,'Informasi');const ok=await fsWrite(true);pop(ok?'Data tersimpan ke folder PC.':'Gagal menyimpan: '+esc(FS.err),()=>syPg(),0,ok?'Berhasil':'Gagal')};
+$('#bc').onclick=async()=>{SY.key=$('#bk2').value.trim()||SY.key;saveSY();const t=BRIDGE.replace('GANTI-KUNCI',SY.key);try{await navigator.clipboard.writeText(t);pop('Skrip sudah disalin. Tempel di editor Apps Script.',null,0,'Berhasil')}catch(e){modal('<h3 style="margin-top:0">Salin skrip ini</h3><textarea rows=12 readonly onfocus="this.select()">'+esc(t)+'</textarea><div class="row"><button class="p" onclick="cl()">Tutup</button></div>')}};
+$('#bsv').onclick=async()=>{SY.url=$('#bu').value.trim();SY.key=$('#bk2').value.trim();saveSY();if(!SY.url)return pop('Isi URL Web App terlebih dahulu.',null,0,'Kesalahan');try{await bridge({action:'ping'});pop('Terhubung ke Apps Script. Tekan Sinkron Sekarang untuk mengirim data.',null,0,'Berhasil')}catch(e){pop(esc(e.message||'Gagal'),null,0,'Gagal Terhubung')}}}
+// simpan ke folder PC (File System Access)
+const FS={h:null,on:true,st:'',err:'',last:'',t:0,busy:false,dirty:false};
+try{FS.on=JSON.parse(localStorage.getItem('v91fs')||'{}').on!==false}catch(e){}
+const fsSave=()=>{try{localStorage.setItem('v91fs',JSON.stringify({on:FS.on}))}catch(e){}};
+const idb=()=>new Promise((res,rej)=>{const q=indexedDB.open('v91fs',1);q.onupgradeneeded=()=>q.result.createObjectStore('h');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});
+const idbGet=async k=>{const d=await idb();return new Promise(r=>{const q=d.transaction('h').objectStore('h').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})};
+const idbSet=async(k,v)=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('h','readwrite');t.objectStore('h').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})};
+(async()=>{try{FS.h=await idbGet('dir')||null;if(FS.h)FS.st=(await FS.h.queryPermission({mode:'readwrite'}))=='granted'?'ok':'perm';setSB()}catch(e){}})();
+async function fsPerm(ask){if(!FS.h)return false;const o={mode:'readwrite'};if(await FS.h.queryPermission(o)=='granted')return true;return ask&&await FS.h.requestPermission(o)=='granted'}
+const fsW=async(n,t)=>{const f=await FS.h.getFileHandle(n,{create:true}),s=await f.createWritable();await s.write(t);await s.close()};
+function fsSoon(){if(FS.h&&FS.on){clearTimeout(FS.t);FS.t=setTimeout(()=>fsWrite(false),2000)}}
+async function fsWrite(manual){if(!FS.h)return false;if(FS.busy){FS.dirty=true;return false}FS.busy=true;let ok=false;
+try{if(!await fsPerm(manual)){FS.st='perm';FS.err='Izin akses folder belum diberikan. Klik Izinkan Akses.'}else{const t=JSON.stringify({app:'V91.StokOrd',saved:now(),data:DB},null,1);await fsW('V91StokOrd-data.json',t);await fsW('V91StokOrd-backup-'+new Date().toISOString().slice(0,10)+'.json',t);FS.last=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});FS.st='ok';FS.err='';ok=true}}
+catch(e){FS.st='err';FS.err=(e&&(e.message||e.name))||'gagal'}
+FS.busy=false;setSB();if(FS.dirty){FS.dirty=false;fsSoon()}return ok}
+async function fsPick(){try{const h=await showDirectoryPicker({id:'v91stokord',mode:'readwrite'});FS.h=h;await idbSet('dir',h);FS.on=true;fsSave();const ok=await fsWrite(true);pop(ok?'Folder <b>'+esc(h.name)+'</b> terpilih dan data sudah ditulis ke folder ini.':'Folder dipilih, tetapi gagal menulis: '+esc(FS.err),()=>syPg(),0,ok?'Berhasil':'Gagal')}catch(e){pop(e&&e.name=='AbortError'?'Pemilihan folder dibatalkan.':'Memilih folder tidak bisa di tampilan ini ('+esc((e&&e.name)||e)+'). Gunakan versi instal di Chrome atau Edge pada PC.',null,0,'Informasi')}}
+async function fsRead(){try{if(!FS.h)return pop('Pilih folder PC terlebih dahulu.',null,0,'Informasi');if(!await fsPerm(true))return pop('Izin akses folder belum diberikan.',null,0,'Informasi');const f=await(await FS.h.getFileHandle('V91StokOrd-data.json')).getFile(),j=JSON.parse(await f.text()),d=j.data;
+if(!d||!['bibit','kemasan','mitra','users','log'].every(k=>Array.isArray(d[k]))||!d.users.some(u=>u.akses=='Admin'))throw 0;
+pop(`Ganti semua data di aplikasi dengan isi file folder (disimpan ${esc(j.saved)})?<br>Bibit: <b>${d.bibit.length}</b>, Kemasan: <b>${d.kemasan.length}</b>, Mitra: <b>${d.mitra.length}</b>, Faktur: <b>${d.log.length}</b>`,()=>{DB.bibit=d.bibit;DB.kemasan=d.kemasan;DB.mitra=d.mitra;DB.users=d.users;DB.log=d.log;if(d.opts)DB.opts=d.opts;save();pop('Data berhasil dipulihkan dari folder.',()=>syPg(),0,'Berhasil')},1,'Verifikasi Pulihkan')}
+catch(e){pop('File V91StokOrd-data.json tidak ditemukan atau formatnya tidak valid di folder terpilih.',null,0,'Gagal')}}
 login();
 </script><script>
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')==0)navigator.serviceWorker.register('sw.js').catch(()=>{});
-let dip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;const b=document.createElement('button');b.textContent='⬇ Instal Aplikasi';b.className='p';b.style.cssText='position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.3)';b.onclick=()=>{dip.prompt();b.remove()};document.body.appendChild(b)});
+let dip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();if(matchMedia('(display-mode: standalone)').matches)return;dip=e;const b=document.createElement('button');b.id='ib';b.textContent='⬇ Instal Aplikasi';b.className='p';b.style.cssText='position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.3)';b.onclick=()=>{dip.prompt();b.remove()};document.body.appendChild(b)});
+addEventListener('appinstalled',()=>{const b=document.getElementById('ib');b&&b.remove()});
 </script>
 </body></html>
+</html>
